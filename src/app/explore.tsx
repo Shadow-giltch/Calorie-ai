@@ -1,23 +1,79 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, View, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import {
+  getProfile,
+  getDietPlan,
+  getFoodLogs,
+  resetAllData,
+  deleteFoodLogEntry,
+  UserProfile,
+  DietPlan,
+  FoodLogEntry,
+} from '@/services/storage';
 
-export default function TabTwoScreen() {
+export default function ExploreScreen() {
   const safeAreaInsets = useSafeAreaInsets();
   const insets = {
     ...safeAreaInsets,
     bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
   };
   const theme = useTheme();
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [dietPlan, setDietPlan] = useState<DietPlan | null>(null);
+  const [foodLogs, setFoodLogs] = useState<FoodLogEntry[]>([]);
+
+  // Function to load storage data
+  const loadData = () => {
+    setProfile(getProfile());
+    setDietPlan(getDietPlan());
+    setFoodLogs(getFoodLogs());
+  };
+
+  // Poll storage on component mount or focus
+  useEffect(() => {
+    loadData();
+    // Since we are in a tab view, set up an interval to refresh logs
+    const interval = setInterval(loadData, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleDeleteLog = (id: string) => {
+    deleteFoodLogEntry(id);
+    loadData();
+  };
+
+  const performReset = () => {
+    resetAllData();
+    setProfile(null);
+    setDietPlan(null);
+    setFoodLogs([]);
+    alert('Profile successfully reset. Return to the Home tab to get started again.');
+  };
+
+  const handleResetData = () => {
+    const confirmMessage = 'Are you sure you want to reset all your profile data and calorie logs? This cannot be undone.';
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMessage)) {
+        performReset();
+      }
+    } else {
+      Alert.alert(
+        'Reset Data',
+        confirmMessage,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Reset', style: 'destructive', onPress: performReset },
+        ]
+      );
+    }
+  };
 
   const contentPlatformStyle = Platform.select({
     android: {
@@ -27,100 +83,124 @@ export default function TabTwoScreen() {
       paddingBottom: insets.bottom,
     },
     web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
+      paddingTop: Spacing.four,
+      paddingBottom: 180, // Large bottom padding so tab bar doesn't overlay content
     },
   });
+
+  const borderCol = theme.backgroundSelected;
 
   return (
     <ScrollView
       style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
       contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            This starter app includes example{'\n'}code to help you get started.
+      <View style={styles.container}>
+        
+        {/* Title */}
+        <View style={styles.headerTitleContainer}>
+          <ThemedText type="title" style={styles.pageTitle}>Diet Insights</ThemedText>
+          <ThemedText themeColor="textSecondary" style={styles.pageSubtitle}>
+            View your active nutrition strategy, track your weight logs, and manage profile settings.
           </ThemedText>
+        </View>
 
-          <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">Expo documentation</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
-            </Pressable>
-          </ExternalLink>
-        </ThemedView>
-
-        <ThemedView style={styles.sectionsWrapper}>
-          <Collapsible title="File-based routing">
-            <ThemedText type="small">
-              This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-              <ThemedText type="code">src/app/explore.tsx</ThemedText>
+        {!profile ? (
+          <ThemedView type="backgroundElement" style={styles.noProfileCard}>
+            <ThemedText style={{ fontSize: 40, marginBottom: Spacing.two }}>📊</ThemedText>
+            <ThemedText type="smallBold" style={{ textAlign: 'center' }}>No Active Nutrition Profile</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center', marginTop: 4 }}>
+              Go to the Home tab and fill in your weight, height, and age to get started.
             </ThemedText>
-            <ThemedText type="small">
-              The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
-              the tab navigator.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/router/introduction">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
-              <ThemedText type="small">
-                You can open this project on Android, iOS, and the web. To open the web version,
-                press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                project.
-              </ThemedText>
-              <Image
-                source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
-              />
+          </ThemedView>
+        ) : (
+          <View style={styles.sectionsContainer}>
+            {/* Weight Goal status */}
+            <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedText type="smallBold" style={styles.cardTitle}>Goal Tracking</ThemedText>
+              <View style={styles.goalStatsRow}>
+                <View style={styles.statBox}>
+                  <ThemedText type="small" themeColor="textSecondary">Current</ThemedText>
+                  <ThemedText type="subtitle">{profile.weight} kg</ThemedText>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statBox}>
+                  <ThemedText type="small" themeColor="textSecondary">Target</ThemedText>
+                  <ThemedText type="subtitle" style={{ color: '#4ade80' }}>{profile.targetWeight} kg</ThemedText>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statBox}>
+                  <ThemedText type="small" themeColor="textSecondary">Remaining</ThemedText>
+                  <ThemedText type="subtitle" style={{ color: '#f59e0b' }}>
+                    {Math.abs(profile.weight - profile.targetWeight).toFixed(1)} kg
+                  </ThemedText>
+                </View>
+              </View>
             </ThemedView>
-          </Collapsible>
 
-          <Collapsible title="Images">
-            <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
-            </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-            <ExternalLink href="https://reactnative.dev/docs/images">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+            {/* Diet Plan Card */}
+            {dietPlan && (
+              <ThemedView type="backgroundElement" style={styles.card}>
+                <ThemedText type="smallBold" style={styles.cardTitle}>Your Active AI Diet Plan</ThemedText>
+                <View style={[styles.dietPlanContainer, { borderColor: borderCol }]}>
+                  <ScrollView style={styles.dietPlanScroll} nestedScrollEnabled={true}>
+                    <ThemedText style={styles.dietPlanTextRaw}>
+                      {dietPlan.dietPlanText}
+                    </ThemedText>
+                  </ScrollView>
+                </View>
+              </ThemedView>
+            )}
 
-          <Collapsible title="Light and dark mode components">
-            <ThemedText type="small">
-              This template has light and dark mode support. The{' '}
-              <ThemedText type="code">useColorScheme()</ThemedText> hook lets you inspect what the
-              user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+            {/* Complete Logs History */}
+            <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedText type="smallBold" style={styles.cardTitle}>Complete Meal History</ThemedText>
+              {foodLogs.length === 0 ? (
+                <ThemedText type="small" themeColor="textSecondary" style={{ fontStyle: 'italic', paddingVertical: Spacing.two }}>
+                  No logged meals recorded.
+                </ThemedText>
+              ) : (
+                <View style={styles.historyList}>
+                  {foodLogs.map((log) => (
+                    <View key={log.id} style={[styles.historyItem, { borderBottomColor: borderCol }]}>
+                      <View style={styles.historyItemMain}>
+                        <View style={styles.historyItemMeta}>
+                          <ThemedText type="smallBold" style={styles.historyItemName}>{log.foodName}</ThemedText>
+                          <ThemedText type="small" themeColor="textSecondary">
+                            {new Date(log.timestamp).toLocaleDateString()} • {log.mealType} ({log.quantity})
+                          </ThemedText>
+                        </View>
+                        <ThemedText type="smallBold" style={styles.historyItemCalories}>
+                          {log.calories} kcal
+                        </ThemedText>
+                      </View>
+                      <View style={styles.historyItemBottom}>
+                        <ThemedText type="code" style={styles.historyItemMacrosText}>
+                          P: {log.protein}g | C: {log.carbs}g | F: {log.fat}g
+                        </ThemedText>
+                        <Pressable onPress={() => handleDeleteLog(log.id)} style={styles.historyDeleteBtn}>
+                          <ThemedText style={{ fontSize: 13 }}>🗑️</ThemedText>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </ThemedView>
 
-          <Collapsible title="Animations">
-            <ThemedText type="small">
-              This template includes an example of an animated component. The{' '}
-              <ThemedText type="code">src/components/ui/collapsible.tsx</ThemedText> component uses
-              the powerful <ThemedText type="code">react-native-reanimated</ThemedText> library to
-              animate opening this hint.
-            </ThemedText>
-          </Collapsible>
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
+            {/* Settings section */}
+            <ThemedView type="backgroundElement" style={[styles.card, { borderColor: '#ef444433', borderWidth: 1 }]}>
+              <ThemedText type="smallBold" style={[styles.cardTitle, { color: '#f87171' }]}>Danger Zone</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
+                Wipe all records including physical stats, target weights, generated diet plans, and food logs.
+              </ThemedText>
+              <Pressable style={styles.btnReset} onPress={handleResetData}>
+                <ThemedText type="smallBold" style={styles.btnResetText}>Reset Profile & Clear Data</ThemedText>
+              </Pressable>
+            </ThemedView>
+
+          </View>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -128,53 +208,126 @@ export default function TabTwoScreen() {
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
+    width: '100%',
   },
   contentContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    paddingHorizontal: Spacing.four,
   },
   container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
-  },
-  titleContainer: {
-    gap: Spacing.three,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
-  },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
     width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
+    maxWidth: MaxContentWidth,
+    gap: Spacing.five,
   },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
+  headerTitleContainer: {
+    gap: Spacing.one,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.two,
+  },
+  pageTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+  },
+  pageSubtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  sectionsContainer: {
+    gap: Spacing.four,
+  },
+  noProfileCard: {
+    padding: Spacing.five,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.four,
+  },
+  card: {
+    padding: Spacing.four,
+    borderRadius: 20,
+    gap: Spacing.three,
+  },
+  cardTitle: {
+    fontSize: 16,
+  },
+  goalStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: Spacing.one,
+  },
+  statBox: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  dietPlanContainer: {
+    borderWidth: 1,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    overflow: 'hidden',
+  },
+  dietPlanScroll: {
+    maxHeight: 320,
+    padding: Spacing.three,
+  },
+  dietPlanTextRaw: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontFamily: Platform.select({ web: 'inherit', default: 'monospace' }),
+    whiteSpace: 'pre-wrap',
+  },
+  historyList: {
+    gap: Spacing.two,
+  },
+  historyItem: {
+    borderBottomWidth: 1,
+    paddingVertical: Spacing.two,
+    gap: Spacing.one,
+  },
+  historyItemMain: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  historyItemMeta: {
+    gap: 2,
+  },
+  historyItemName: {
+    fontSize: 15,
+  },
+  historyItemCalories: {
+    fontSize: 15,
+    color: '#4ade80',
+  },
+  historyItemBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  historyItemMacrosText: {
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  historyDeleteBtn: {
+    padding: 4,
+  },
+  btnReset: {
+    backgroundColor: '#ef444422',
+    borderWidth: 1.5,
+    borderColor: '#ef4444',
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnResetText: {
+    color: '#f87171',
+    fontSize: 14,
   },
 });
