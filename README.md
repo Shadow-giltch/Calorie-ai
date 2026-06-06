@@ -1,56 +1,100 @@
-# Welcome to your Expo app 👋
+# 🌿 Calorie.AI — Smart AI Calorie Tracker
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Calorie.AI is a premium, fully responsive web application built on **Expo (v56.0.0) + React Native Web** that helps users set body composition goals, calculate their BMI, generate personalized nutrition plans, and track their daily calorie and macronutrient intake using **Grok AI**.
 
-## Get started
+---
 
-1. Install dependencies
+## ✨ Features
 
-   ```bash
-   npm install
-   ```
+*   **⚡ Splash & Onboarding Flow:** Beautiful visual welcome screen with pulsing logo and animations guiding users step-by-step.
+*   **📊 Live BMI Calculator:** Real-time calculation of Body Mass Index (BMI) using standard formulas:  
+    $$BMI = \frac{Weight\ (kg)}{Height^2\ (m)}$$  
+    Displays dynamic, color-coded health ranges (Underweight, Normal, Overweight, Obese).
+*   **🤖 Custom AI Diet Plans:** Integrates with the **Grok AI** model via RapidAPI to construct personalized caloric targets and macronutrient distributions (Protein, Carbs, Fats, Fiber) inside structured daily menus (Breakfast, Lunch, Dinner, Snacks).
+*   **📷 Visual Food Logging:** Add meal logs by portion size, text description, or **food image upload** (Web-camera capture or library picker). Grok parses the photo/description to calculate nutrition values automatically.
+*   **🏃 Excess Calorie Warning & Exercise Suggestions:** Warns users if they exceed their daily budget and dynamically calculates required exercise durations (e.g. running, cycling, cardio) to burn off the excess calories.
+*   **📂 Persistent Data Records:** Saves profile details, target weights, generated diet plans, and logs locally so data is maintained across sessions.
+*   **🛡️ Secure Environment Config:** RapidAPI keys are kept strictly local in a git-ignored environment file (`.env`).
+*   **⚙️ Insights & Settings:** Review detailed historical logging, read the generated diet plans in full markdown, and reset all stored profile data instantly.
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## 🛠️ Technology Stack
 
-In the output, you'll find options to open the app in a
+1.  **Framework:** Expo SDK 56.0.0 (Expo Router for routing & navigation).
+2.  **Platforms:** Cross-platform (iOS, Android, and fully responsive Web).
+3.  **Language:** TypeScript.
+4.  **Styling:** StyleSheet styling engine compiled to CSS at runtime.
+5.  **State Management:** local React State with custom web-native persistence.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 📂 Project Architecture
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+├── .env                  # Git-ignored local environment variable (key)
+├── .env.example          # Template environment variable
+├── .gitignore            # Git ignore list (configured to protect keys)
+├── package.json          # Dependencies & npm scripts
+├── src/
+│   ├── app/
+│   │   ├── _layout.tsx   # Root navigation layout
+│   │   ├── index.tsx     # Home tab (Splash, Onboarding, and Main Dashboard)
+│   │   └── explore.tsx   # Insights tab (Goal stats, Diet plan, History list)
+│   ├── components/
+│   │   ├── app-tabs.web.tsx  # Responsive web navigation bar header
+│   │   └── themed-text.tsx   # Styled text wrapper components
+│   └── services/
+│       ├── api.ts        # RapidAPI Grok completions & Mifflin-St Jeor fallbacks
+│       └── storage.ts    # localStorage wrapper for profile & logged meals
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-### Other setup steps
+## 🚀 Getting Started
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+### 1. Prerequisites
+Ensure you have Node.js and npm installed on your machine.
 
-## Learn more
+### 2. Installation
+Clone this repository and install the project dependencies:
+```bash
+npm install
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+### 3. Environment Setup
+Copy the template configuration file:
+```bash
+cp .env.example .env
+```
+Open the `.env` file and insert your API key:
+```ini
+EXPO_PUBLIC_RAPIDAPI_KEY=your_rapidapi_grok_key_here
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### 4. Running the Application
 
-## Join the community
+*   **Web Portal (recommended):**
+    ```bash
+    npm run web
+    ```
+    Opens the development site on `http://localhost:8081`.
 
-Join our community of developers creating universal apps.
+*   **Mobile Simulator (Android):**
+    ```bash
+    npm run android
+    ```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+*   **Mobile Simulator (iOS):**
+    ```bash
+    npm run ios
+    ```
+
+---
+
+## 🛡️ Robust Fail-Safe Design
+In case your RapidAPI credentials expire or experience latency, Calorie.AI features a built-in **Local Nutrition Math Engine** that acts as a fail-safe:
+*   **Diet Plan Fallback:** Calculates daily maintenance energy expenditures using the **Mifflin-St Jeor Equation**:
+    *   $BMR = 10 \times Weight\ (kg) + 6.25 \times Height\ (cm) - 5 \times Age\ (y) + 5$
+    *   Subtracts 500 kcal for deficit targets or adds 300 kcal for surplus targets.
+*   **Food Analysis Fallback:** Scans logged description text for dietary keywords (such as chicken, oats, avocado, salad, burger, pizza, etc.) and scales calorie/macronutrient values using a local nutrition dictionary relative to portion quantity.
